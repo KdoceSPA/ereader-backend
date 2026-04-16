@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.env
+storage/covers/*
+storage/books/*
+!storage/covers/.gitkeep
+!storage/books/.gitkeep
+*.log

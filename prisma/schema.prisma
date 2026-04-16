@@ -1,0 +1,87 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Level {
+  prekinder
+  kinder
+  primero_basico  @map("1_basico")
+  segundo_basico  @map("2_basico")
+  tercero_basico  @map("3_basico")
+  cuarto_basico   @map("4_basico")
+  quinto_basico   @map("5_basico")
+  sexto_basico    @map("6_basico")
+  septimo_basico  @map("7_basico")
+  octavo_basico   @map("8_basico")
+  primero_medio   @map("1_medio")
+  segundo_medio   @map("2_medio")
+  tercero_medio   @map("3_medio")
+  cuarto_medio    @map("4_medio")
+}
+
+enum Role {
+  admin
+  content
+}
+
+enum Status {
+  active
+  inactive
+}
+
+model Book {
+  id          Int              @id @default(autoincrement())
+  title       String           @db.VarChar(255)
+  description String?          @db.Text
+  level       Level
+  coverImage  String?          @db.VarChar(500)
+  fileUrl     String           @db.VarChar(500)
+  status      Status           @default(active)
+  createdAt   DateTime         @default(now())
+
+  institutions InstitutionBook[]
+
+  @@map("books")
+}
+
+model Institution {
+  id        Int              @id @default(autoincrement())
+  name      String           @db.VarChar(255)
+  status    Status           @default(active)
+  createdAt DateTime         @default(now())
+
+  books InstitutionBook[]
+  users User[]
+
+  @@map("institutions")
+}
+
+model InstitutionBook {
+  id            Int         @id @default(autoincrement())
+  institutionId Int
+  bookId        Int
+
+  institution Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  book        Book        @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@unique([institutionId, bookId])
+  @@map("institution_books")
+}
+
+model User {
+  id            Int          @id @default(autoincrement())
+  email         String       @unique @db.VarChar(255)
+  password      String       @db.VarChar(255)
+  role          Role         @default(content)
+  institutionId Int?
+  createdAt     DateTime     @default(now())
+
+  institution Institution? @relation(fields: [institutionId], references: [id], onDelete: SetNull)
+
+  @@map("users")
+}
