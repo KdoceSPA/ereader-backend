@@ -8,6 +8,8 @@ export function errorHandler(
   res: Response,
   _next: NextFunction
 ): void {
+  console.error(`[${req.method}] ${req.path}`, err);
+
   // Zod validation errors
   if (err instanceof ZodError) {
     res.status(400).json({
