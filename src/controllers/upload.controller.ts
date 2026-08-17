@@ -18,6 +18,7 @@ export async function uploadFiles(req: Request, res: Response, next: NextFunctio
     if (files.epub?.[0]) {
       const epubFile = files.epub[0];
       result.fileUrl = `/storage/books/${epubFile.filename}`;
+      result.fileType = epubFile.originalname.toLowerCase().endsWith('.pdf') ? 'pdf' : 'epub';
     }
 
     if (files.cover?.[0]) {

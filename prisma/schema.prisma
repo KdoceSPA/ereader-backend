@@ -34,6 +34,11 @@ enum Status {
   inactive
 }
 
+enum FileType {
+  epub
+  pdf
+}
+
 model Book {
   id          Int              @id @default(autoincrement())
   title       String           @db.VarChar(255)
@@ -41,6 +46,7 @@ model Book {
   level       Level
   coverImage  String?          @db.VarChar(500)
   fileUrl     String           @db.VarChar(500)
+  fileType    FileType         @default(epub)
   status      Status           @default(active)
   createdAt   DateTime         @default(now())
 

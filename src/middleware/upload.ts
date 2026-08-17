@@ -31,10 +31,12 @@ function fileFilter(
   cb: multer.FileFilterCallback
 ) {
   if (file.fieldname === 'epub') {
-    if (file.mimetype === 'application/epub+zip' || file.originalname.endsWith('.epub')) {
+    const isEpub = file.mimetype === 'application/epub+zip' || file.originalname.endsWith('.epub');
+    const isPdf = file.mimetype === 'application/pdf' || file.originalname.endsWith('.pdf');
+    if (isEpub || isPdf) {
       cb(null, true);
     } else {
-      cb(new Error('Only .epub files are allowed for the epub field'));
+      cb(new Error('Only .epub or .pdf files are allowed for the epub field'));
     }
   } else if (file.fieldname === 'cover') {
     if (file.mimetype.startsWith('image/')) {

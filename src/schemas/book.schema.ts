@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { Level, Status } from '@prisma/client';
+import { Level, Status, FileType } from '@prisma/client';
 
 export const createBookSchema = z.object({
   title: z.string().min(1, 'Title is required').max(255),
@@ -7,6 +7,7 @@ export const createBookSchema = z.object({
   level: z.nativeEnum(Level),
   coverImage: z.string().optional(),
   fileUrl: z.string().min(1, 'File URL is required'),
+  fileType: z.nativeEnum(FileType).optional().default(FileType.epub),
   status: z.nativeEnum(Status).optional().default(Status.active),
 });
 
@@ -16,6 +17,7 @@ export const updateBookSchema = z.object({
   level: z.nativeEnum(Level).optional(),
   coverImage: z.string().optional(),
   fileUrl: z.string().optional(),
+  fileType: z.nativeEnum(FileType).optional(),
   status: z.nativeEnum(Status).optional(),
 });
 
