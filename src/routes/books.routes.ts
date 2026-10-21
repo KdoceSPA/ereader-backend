@@ -9,8 +9,8 @@ router.use(authenticate);
 
 router.get('/', listBooks);
 router.get('/:id', getBook);
-router.post('/', requireRole('admin'), createBookHandler);
-router.put('/:id', requireRole('admin'), updateBookHandler);
+router.post('/', requireRole('admin', 'content'), createBookHandler);
+router.put('/:id', requireRole('admin', 'content'), updateBookHandler);
 router.delete('/:id', requireRole('admin'), deleteBookHandler);
 
 export default router;
