@@ -1,6 +1,13 @@
 import { Request, Response, NextFunction } from 'express';
-import { createBookSchema, updateBookSchema } from '../schemas/book.schema';
-import { getAllBooks, getBookById, createBook, updateBook, deleteBook } from '../services/books.service';
+import { createBookSchema, updateBookSchema, levelParamSchema } from '../schemas/book.schema';
+import {
+  getAllBooks,
+  getBookById,
+  createBook,
+  updateBook,
+  deleteBook,
+  removeBookLevel,
+} from '../services/books.service';
 
 export async function listBooks(req: Request, res: Response, next: NextFunction) {
   try {
@@ -42,7 +49,17 @@ export async function updateBookHandler(req: Request, res: Response, next: NextF
 
 export async function deleteBookHandler(req: Request, res: Response, next: NextFunction) {
   try {
-    await deleteBook(Number(req.params.id));
+    await deleteBook(Number(req.params.id), req.user!);
+    res.status(204).end();
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function removeBookLevelHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const level = levelParamSchema.parse(req.params.level);
+    await removeBookLevel(Number(req.params.id), level, req.user!);
     res.status(204).end();
   } catch (err) {
     next(err);

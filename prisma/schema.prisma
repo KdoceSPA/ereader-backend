@@ -40,19 +40,32 @@ enum FileType {
 }
 
 model Book {
-  id          Int              @id @default(autoincrement())
-  title       String           @db.VarChar(255)
-  description String?          @db.Text
-  level       Level
-  coverImage  String?          @db.VarChar(500)
-  fileUrl     String           @db.VarChar(500)
-  fileType    FileType         @default(epub)
-  status      Status           @default(active)
-  createdAt   DateTime         @default(now())
+  id              Int              @id @default(autoincrement())
+  title           String           @db.VarChar(255)
+  description     String?          @db.Text
+  coverImage      String?          @db.VarChar(500)
+  fileUrl         String           @db.VarChar(500)
+  fileType        FileType         @default(epub)
+  status          Status           @default(active)
+  createdAt       DateTime         @default(now())
+  createdByUserId Int?
 
-  institutions InstitutionBook[]
+  createdByUser User?             @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
+  institutions   InstitutionBook[]
+  levels         BookLevel[]
 
   @@map("books")
+}
+
+model BookLevel {
+  id     Int   @id @default(autoincrement())
+  bookId Int
+  level  Level
+
+  book Book @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@unique([bookId, level])
+  @@map("book_levels")
 }
 
 model Institution {
@@ -88,6 +101,7 @@ model User {
   createdAt     DateTime     @default(now())
 
   institution Institution? @relation(fields: [institutionId], references: [id], onDelete: SetNull)
+  books       Book[]
 
   @@map("users")
 }

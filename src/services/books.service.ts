@@ -1,10 +1,17 @@
-import { Role } from '@prisma/client';
+import { Role, Level } from '@prisma/client';
 import { prisma } from '../config/db';
 import { CreateBookInput, UpdateBookInput } from '../schemas/book.schema';
 
-type AuthUser = { role: Role; institutionId: number | null };
+type AuthUser = { id: number; role: Role; institutionId: number | null };
 
-async function assertOwnership(bookId: number, user: AuthUser) {
+const bookInclude = { levels: true } as const;
+
+function toBookResponse<T extends { levels: { level: Level }[] }>(book: T) {
+  const { levels, ...rest } = book;
+  return { ...rest, levels: levels.map((l) => l.level) };
+}
+
+async function assertVisible(bookId: number, user: AuthUser) {
   if (user.role !== 'content') return;
   const link = await prisma.institutionBook.findFirst({
     where: { bookId, institutionId: user.institutionId ?? -1 },
@@ -14,26 +21,36 @@ async function assertOwnership(bookId: number, user: AuthUser) {
   }
 }
 
+function assertEditable(book: { createdByUserId: number | null }, user: AuthUser) {
+  if (user.role === 'content' && book.createdByUserId !== user.id) {
+    throw Object.assign(new Error('Book not found'), { status: 404 });
+  }
+}
+
 export async function getAllBooks(user: AuthUser) {
-  return prisma.book.findMany({
+  const books = await prisma.book.findMany({
     where:
       user.role === 'content'
         ? { institutions: { some: { institutionId: user.institutionId ?? -1 } } }
         : undefined,
     orderBy: { createdAt: 'desc' },
+    include: bookInclude,
   });
+  return books.map(toBookResponse);
 }
 
 export async function getBookById(id: number, user: AuthUser) {
-  const book = await prisma.book.findUnique({ where: { id } });
+  const book = await prisma.book.findUnique({ where: { id }, include: bookInclude });
   if (!book) {
     throw Object.assign(new Error('Book not found'), { status: 404 });
   }
-  await assertOwnership(id, user);
-  return book;
+  await assertVisible(id, user);
+  return toBookResponse(book);
 }
 
 export async function createBook(data: CreateBookInput, user: AuthUser) {
+  const { levels, ...bookData } = data;
+
   if (user.role === 'content') {
     if (!user.institutionId) {
       throw Object.assign(
@@ -42,25 +59,77 @@ export async function createBook(data: CreateBookInput, user: AuthUser) {
       );
     }
     return prisma.$transaction(async (tx) => {
-      const book = await tx.book.create({ data });
+      const book = await tx.book.create({ data: { ...bookData, createdByUserId: user.id } });
+      await tx.bookLevel.createMany({
+        data: levels.map((level) => ({ bookId: book.id, level })),
+      });
       await tx.institutionBook.create({
         data: { bookId: book.id, institutionId: user.institutionId! },
       });
-      return book;
+      const full = await tx.book.findUniqueOrThrow({
+        where: { id: book.id },
+        include: bookInclude,
+      });
+      return toBookResponse(full);
     });
   }
-  return prisma.book.create({ data });
+
+  return prisma.$transaction(async (tx) => {
+    const book = await tx.book.create({ data: bookData });
+    await tx.bookLevel.createMany({
+      data: levels.map((level) => ({ bookId: book.id, level })),
+    });
+    const full = await tx.book.findUniqueOrThrow({
+      where: { id: book.id },
+      include: bookInclude,
+    });
+    return toBookResponse(full);
+  });
 }
 
 export async function updateBook(id: number, data: UpdateBookInput, user: AuthUser) {
-  await getBookById(id, user);
-  return prisma.book.update({ where: { id }, data });
+  const book = await getBookById(id, user);
+  assertEditable(book, user);
+
+  const { levels, ...bookData } = data;
+
+  return prisma.$transaction(async (tx) => {
+    await tx.book.update({ where: { id }, data: bookData });
+
+    if (levels) {
+      await tx.bookLevel.deleteMany({ where: { bookId: id } });
+      await tx.bookLevel.createMany({
+        data: levels.map((level) => ({ bookId: id, level })),
+      });
+    }
+
+    const full = await tx.book.findUniqueOrThrow({
+      where: { id },
+      include: bookInclude,
+    });
+    return toBookResponse(full);
+  });
 }
 
-export async function deleteBook(id: number) {
-  const book = await prisma.book.findUnique({ where: { id } });
-  if (!book) {
-    throw Object.assign(new Error('Book not found'), { status: 404 });
-  }
+export async function deleteBook(id: number, user: AuthUser) {
+  const book = await getBookById(id, user);
+  assertEditable(book, user);
   return prisma.book.delete({ where: { id } });
+}
+
+export async function removeBookLevel(id: number, level: Level, user: AuthUser) {
+  const book = await getBookById(id, user);
+  assertEditable(book, user);
+
+  if (!book.levels.includes(level)) {
+    throw Object.assign(new Error('Level not associated with this book'), { status: 404 });
+  }
+
+  if (book.levels.length === 1) {
+    await prisma.book.delete({ where: { id } });
+    return { deleted: true as const };
+  }
+
+  await prisma.bookLevel.delete({ where: { bookId_level: { bookId: id, level } } });
+  return { deleted: false as const };
 }
