@@ -8,7 +8,10 @@ const bookInclude = { levels: true } as const;
 
 function toBookResponse<T extends { levels: { level: Level }[] }>(book: T) {
   const { levels, ...rest } = book;
-  return { ...rest, levels: levels.map((l) => l.level) };
+  const flatLevels = levels.map((l) => l.level);
+  // `level` (singular) se mantiene por compatibilidad con APKs ya instalados
+  // que todavía esperan ese campo en vez de `levels`.
+  return { ...rest, levels: flatLevels, level: flatLevels[0] ?? null };
 }
 
 async function assertVisible(bookId: number, user: AuthUser) {

@@ -35,7 +35,9 @@ export async function getInstitutionBooks(institutionId: number) {
   });
   return links.map((l) => {
     const { levels, ...rest } = l.book;
-    return { ...rest, levels: levels.map((bl) => bl.level) };
+    const flatLevels = levels.map((bl) => bl.level);
+    // `level` (singular) se mantiene por compatibilidad con APKs ya instalados.
+    return { ...rest, levels: flatLevels, level: flatLevels[0] ?? null };
   });
 }
 
