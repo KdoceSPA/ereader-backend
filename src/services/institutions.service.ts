@@ -31,9 +31,12 @@ export async function getInstitutionBooks(institutionId: number) {
   await getInstitutionById(institutionId);
   const links = await prisma.institutionBook.findMany({
     where: { institutionId },
-    include: { book: true },
+    include: { book: { include: { levels: true } } },
   });
-  return links.map((l) => l.book);
+  return links.map((l) => {
+    const { levels, ...rest } = l.book;
+    return { ...rest, levels: levels.map((bl) => bl.level) };
+  });
 }
 
 export async function addBookToInstitution(institutionId: number, bookId: number) {
